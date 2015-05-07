@@ -1,0 +1,34 @@
+#!/bin/bash
+ftpuser=user
+pass=pass
+mysqluser=mysqluser
+mysqlpass=mysqlpass
+Server=ftpserver.com
+Location="Ftp location where the files need to be copied"
+Tablebkpdir="Location where the tables will be getting dumped"
+Date=`date '+%Y-%m-%d-%H%M%S'`
+updatedtime=`date --date='yesterday' '+%Y-%m-%d'`
+
+if [ ! -d "$Tablebkpdir" ]; then
+            mkdir  $Tablebkpdir;
+ fi
+
+chown -R mysql:mysql $Tablebkpdir
+
+
+
+mysql -u$mysqluser -p$mysqlpass "table name" -e "SELECT COLUMN_NAME FROM information_schema.COLUMNS C WHERE table_name = 'Temp_CustomField';" | awk '{print $1}' | grep -iv ^COLUMN_NAME$ | sed 's/^/"/g;s/$/"/g' | tr '\n' '\,' >> $Tablebkpdir/Temp-$Date.csv
+
+
+mysql -u$mysqluser -p$mysqlpass "database name" -e "SELECT * from "table name" where last_updatedtime >= '$updatedtime 00:00:00' INTO OUTFILE '$Tablebkpdir/template.csv' fields terminated by '\,' optionally enclosed by '\"' lines terminated by '\r\n';"
+
+
+
+echo -en '\n' >> $Tablebkpdir/user_management_Temp-$Date.csv
+cat $Tablebkpdir/template.csv | sed 's/.$//'  >> $Tablebkpdir/user_management_Temp-$Date.csv
+
+sed -e 's/\"\[\\//g' -e 's/\]\"//g' -e 's/\"//g' -e 's/\,\\/,/g' -e 's/\\,/,/g' -e 's/N,/,/g' -e 's/\\\\\//\//g' -e 's/.$//' -i $Tablebkpdir/Temp-$Date.csv
+
+rm -v /mnt/tablebkpISG/template.csv
+
+lftp  -e "set ftp:ssl-allow no;cd $Location;put $Tablebkpdir/Temp-$Date.csv ;quit" -u $ftpuser:$pass $Server
