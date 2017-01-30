@@ -1,0 +1,14 @@
+#!/bin/bash
+#Numbers are given as input
+read a
+#Number of inputs
+count=$a
+sum=0
+
+for i in $(seq 1 $a)
+    do
+    read x
+    sum=$((x+sum))
+    done
+#The floating digit is placed to the 3 place 
+echo "$sum/$a"|bc -l | xargs printf "%.*f\n" 3
